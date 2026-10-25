@@ -77,7 +77,16 @@ body.touring #zoom{opacity:0;pointer-events:none}
 #cap .t{font:400 15px var(--f-body);letter-spacing:.03em}
 :root[data-theme="dark"] #cap{background:rgba(12,20,32,.35);border-color:rgba(255,255,255,.18);color:#e8f0f8}
 :root[data-theme="dark"] #cap .n{color:rgba(232,240,248,.55)}
-.nav{display:flex;gap:6px;flex-wrap:wrap}.navb{font:500 12px var(--f-body);color:var(--fg);text-decoration:none;background:var(--chip);border:1px solid var(--line);border-radius:6px;padding:6px 9px}.navb:hover{border-color:var(--accent)}
+#gnav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(22px + env(safe-area-inset-bottom,0px));display:flex;gap:10px;z-index:6;transition:opacity .4s}
+#gnav a{display:inline-flex;align-items:center;gap:8px;font:600 14px var(--f-body);color:#15202b;text-decoration:none;padding:11px 18px;border-radius:999px;background:rgba(255,255,255,.55);-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);border:1px solid rgba(255,255,255,.9);box-shadow:0 8px 24px rgba(20,40,70,.16),inset 0 1px 0 rgba(255,255,255,.9);transition:transform .2s ease,background .2s ease}
+#gnav a:hover{transform:translateY(-2px);background:rgba(255,255,255,.8)}
+#gnav a.pri{background:rgba(31,127,224,.88);color:#fff;border-color:rgba(255,255,255,.5)}
+#gnav a.pri:hover{background:rgba(31,127,224,1)}
+body.touring #gnav{opacity:0;pointer-events:none}
+@media (min-width:761px){#gnav{left:calc(50% + 166px)}body:has(.panel.min) #gnav{left:50%}}
+#areaBox{bottom:calc(86px + env(safe-area-inset-bottom,0px))}
+:root[data-theme="dark"] #gnav a:not(.pri){background:rgba(16,25,38,.6);color:#e8f0f8;border-color:rgba(255,255,255,.18)}
+@media (max-width:560px){#gnav{bottom:auto;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%)}#gnav a{padding:9px 14px;font-size:13px}}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400&display=swap">
 
@@ -92,10 +101,10 @@ body.touring #zoom{opacity:0;pointer-events:none}
 <div id="areaBox" role="status" aria-live="polite"><div class="top"><span class="step">Área</span><h2 id="aTitle"></h2><button id="aBack">← Visão geral</button></div><p id="aSub"></p><div class="chips" id="aChips"></div></div>
 <div id="cap" aria-hidden="true"><span class="n" id="capN"></span><span class="t" id="capT"></span></div>
 <div id="zoom" aria-label="Zoom"><button id="zIn" aria-label="Aproximar">+</button><button id="zOut" aria-label="Afastar">−</button></div>
+<nav id="gnav" aria-label="Navegação"><a class="pri" href="index.html">← Voltar ao início</a><a href="producao.html">Ver Produção →</a></nav>
 <div class="panel" id="panel">
   <button id="hide" aria-label="Recolher painel">–</button>
   <h1>Centro de Distribuição</h1>
-  <div class="nav"><a class="navb" href="index.html">← Início</a><a class="navb" href="producao.html">Ver Produção →</a></div>
   <p class="sub">Novo layout em 3D · arraste para girar, role para zoom</p>
   <div class="row"><button id="tourGo">▶ Tour do projeto · 1 min</button></div>
   <div class="lbl">Áreas · clique para entrar no detalhe</div>
