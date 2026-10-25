@@ -90,6 +90,7 @@ body.touring #gnav{opacity:0;pointer-events:none}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400&display=swap">
 
+<script>document.body.classList.add('touring','notext');</script>
 <div id="view" aria-label="Modelo 3D do centro de distribuição"></div>
 <div class="kpis" aria-label="Indicadores do layout">
   <div class="kpi"><small>Posições pallet</small><b>144<em>3 níveis</em></b></div>
@@ -866,7 +867,7 @@ hide.addEventListener('click',()=>{const m=panel.classList.toggle('min');hide.te
 // ---------- áreas: entrar no detalhe ----------
 const AREAS={
  geral:{c:[66,-16,36],t:[28,9,0]},
- planta:{c:[29.25,9.36,88],t:[29.25,9.35,0]},
+ planta:{c:[29.25,9.36,74],t:[29.25,9.35,0]},
  estoque:{c:[61.5,-4.5,22.3],t:[39.9,13.8,0],title:'Estoque geral · 235 m²',sub:'Porta-pallets em 3 níveis, recebimento e expedição com ilha para operadores logísticos.',chips:[['144','posições porta-pallet · 3 níveis'],['≈ 216 m³','em pallets'],['2','lugares na ilha'],['4 m','portão metálico']]},
  eletro:{c:[38.4,-1.8,19.8],t:[19.2,14.5,0],title:'Estoque Eletrônicos e Câmeras · 155 m²',sub:'Itens de maior valor: placas eletrônicas, câmeras, lentes e sensores Doppler. Estantes de 3 níveis, recebimento pela doca coberta.',chips:[['15','estantes × 3 níveis'],['≈ 90 m³','em estantes']]},
  separacao:{c:[36,4,17],t:[22.5,16,0],title:'Área de separação (picking)',sub:'Área de separação (picking) com bancadas de separação e conferência.',chips:[['1','auxiliar na separação'],['Bancadas','de separação e conferência']]},
@@ -938,11 +939,11 @@ const setTxt=on=>{document.body.classList.toggle('notext',!on);$('tourTxt').setA
 $('tourGo').addEventListener('click',()=>{setTxt(false);tourStart();});$('tourTxt').addEventListener('click',()=>setTxt(document.body.classList.contains('notext')));buildTent(tentS);$('tourStop').addEventListener('click',()=>tourStop());
 addEventListener('keydown',e=>{if(e.key==='Escape')tourStop();});
 // abre direto no tour; ao terminar (ou em Sair) fica livre para navegar pelos botões
-setTimeout(()=>{if(!tour){setTxt(false);tourStart();}},250);
+
 
 function viewOff(){const w=host.clientWidth,h=host.clientHeight,pn=document.getElementById('panel');const side=(innerWidth>760&&!document.body.classList.contains('touring')&&!pn.classList.contains('min'))?Math.round((pn.offsetWidth+16)/2):0;if(side)cam.setViewOffset(w,h,-side,0,w,h);else cam.clearViewOffset();cam.updateProjectionMatrix();}
 function size(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix();viewOff();}
-addEventListener('resize',size); size(); go('iso',true);
+addEventListener('resize',size); size(); go('iso',true); setTxt(false); tourStart();
 (function loop(now){requestAnimationFrame(loop);
   if(anim){const k=Math.min(1,(now-anim.t0)/900),e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
     cam.position.lerpVectors(anim.from.p,anim.to.p,e);ctl.target.lerpVectors(anim.from.t,anim.to.t,e);if(k>=1)anim=null;}
