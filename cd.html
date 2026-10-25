@@ -850,14 +850,14 @@ tog('tRoof',on=>groups.roof.visible=on);
 tog('tTent',on=>groups.tent.visible=on);
 tog('tLabels',on=>{labelsOn=on;groups.labels.visible=on&&!(AREAS[curArea]&&AREAS[curArea].title);SALAS.setFloor(sFloor);});
 const panel=document.getElementById('panel'),hide=document.getElementById('hide');
-hide.addEventListener('click',()=>{const m=panel.classList.toggle('min');hide.textContent=m?'+':'–';hide.setAttribute('aria-label',m?'Abrir painel':'Recolher painel');});
+hide.addEventListener('click',()=>{const m=panel.classList.toggle('min');hide.textContent=m?'+':'–';hide.setAttribute('aria-label',m?'Abrir painel':'Recolher painel');viewOff();});
 
 
 
 // ---------- áreas: entrar no detalhe ----------
 const AREAS={
  geral:{c:[66,-16,36],t:[28,9,0]},
- planta:{c:[29.25,9.36,80],t:[29.25,9.35,0]},
+ planta:{c:[29.25,9.36,88],t:[29.25,9.35,0]},
  estoque:{c:[61.5,-4.5,22.3],t:[39.9,13.8,0],title:'Estoque geral · 235 m²',sub:'Porta-pallets em 3 níveis, recebimento e expedição com ilha para operadores logísticos.',chips:[['144','posições porta-pallet · 3 níveis'],['≈ 216 m³','em pallets'],['2','lugares na ilha'],['4 m','portão metálico']]},
  eletro:{c:[38.4,-1.8,19.8],t:[19.2,14.5,0],title:'Estoque Eletrônicos e Câmeras · 155 m²',sub:'Itens de maior valor: placas eletrônicas, câmeras, lentes e sensores Doppler. Estantes de 3 níveis, recebimento pela doca coberta.',chips:[['15','estantes × 3 níveis'],['≈ 90 m³','em estantes']]},
  separacao:{c:[36,4,17],t:[22.5,16,0],title:'Área de separação (picking)',sub:'Área de separação (picking) com bancadas de separação e conferência.',chips:[['1','auxiliar na separação'],['Bancadas','de separação e conferência']]},
@@ -913,9 +913,9 @@ let tour=null;const $=id=>document.getElementById(id);
 function tourShow(i){const s=TOUR[i];TOUR_GB.forEach((g,j)=>{if(g){g.visible=j===i;gbFade(g,0);}});{const c=$('cap');if(s.cap){$('capN').textContent=String(i+1).padStart(2,'0');$('capT').textContent=s.cap;c.classList.add('on');}else c.classList.remove('on');}$('tStep').textContent=(i+1)+'/'+TOUR.length;$('tTitle').textContent=s.title;$('tSub').textContent=s.sub;
   $('tChips').innerHTML=s.chips.map(([v,l])=>'<span><b>'+v+'</b> '+l+'</span>').join('');SALAS.setFloor(s.floor||'both');}
 function tourStart(){anim=null;document.getElementById('areaBox').classList.remove('on');tour={t0:performance.now(),i:-1,from:null,labels:groups.labels.visible};groups.labels.visible=false;SALAS.G.labels.visible=false;SALAS.setFloor('both');
-  ctl.enabled=false;document.body.classList.add('touring');$('tourBox').classList.add('on');}
+  ctl.enabled=false;document.body.classList.add('touring');viewOff();$('tourBox').classList.add('on');}
 function tourStop(keep){if(!tour)return;TOUR_GB.forEach(g=>{if(g)g.visible=false;});$('cap').classList.remove('on');groups.high.visible=wallsOn;groups.labels.visible=tour.labels;tour=null;ctl.enabled=true;SALAS.setFloor(typeof sFloor!=='undefined'?sFloor:'both');
-  document.body.classList.remove('touring');$('tourBox').classList.remove('on');if(!keep)enterArea('geral');}
+  document.body.classList.remove('touring');$('tourBox').classList.remove('on');viewOff();if(!keep)enterArea('planta');}
 function tourUpdate(now){if(!tour)return;const el=Math.max(0,(now-tour.t0)/1000);if(el>=TOTAL){tourStop();return;}
   const i=Math.floor(el/STEP),k=el-i*STEP,s=TOUR[i];
   if(i!==tour.i){tour.i=i;groups.high.visible=false;tour.from={p:cam.position.clone(),t:ctl.target.clone()};tourShow(i);}
@@ -926,12 +926,13 @@ function tourUpdate(now){if(!tour)return;const el=Math.max(0,(now-tour.t0)/1000)
   cam.position.lerpVectors(tour.from.p,rot,e);ctl.target.lerpVectors(tour.from.t,tt,e);cam.lookAt(ctl.target);
   $('tBar').style.width=(100*el/TOTAL).toFixed(1)+'%';}
 const setTxt=on=>{document.body.classList.toggle('notext',!on);$('tourTxt').setAttribute('aria-pressed',on);};
-$('tourGo').addEventListener('click',()=>{setTxt(false);tourStart();});$('tourTxt').addEventListener('click',()=>setTxt(document.body.classList.contains('notext')));buildTent(tentS);$('tourStop').addEventListener('click',tourStop);
+$('tourGo').addEventListener('click',()=>{setTxt(false);tourStart();});$('tourTxt').addEventListener('click',()=>setTxt(document.body.classList.contains('notext')));buildTent(tentS);$('tourStop').addEventListener('click',()=>tourStop());
 addEventListener('keydown',e=>{if(e.key==='Escape')tourStop();});
 // abre direto no tour; ao terminar (ou em Sair) fica livre para navegar pelos botões
-setTimeout(()=>{if(!tour){setTxt(false);tourStart();}},1200);
+setTimeout(()=>{if(!tour){setTxt(false);tourStart();}},250);
 
-function size(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix();}
+function viewOff(){const w=host.clientWidth,h=host.clientHeight,pn=document.getElementById('panel');const side=(innerWidth>760&&!document.body.classList.contains('touring')&&!pn.classList.contains('min'))?Math.round((pn.offsetWidth+16)/2):0;if(side)cam.setViewOffset(w,h,-side,0,w,h);else cam.clearViewOffset();cam.updateProjectionMatrix();}
+function size(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix();viewOff();}
 addEventListener('resize',size); size(); go('iso',true);
 (function loop(now){requestAnimationFrame(loop);
   if(anim){const k=Math.min(1,(now-anim.t0)/900),e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;

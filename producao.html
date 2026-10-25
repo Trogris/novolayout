@@ -409,7 +409,7 @@ function go(k,instant){const v=V[k];const to={p:new THREE.Vector3(...v.p),t:new 
 // c = câmera e t = alvo, em coordenadas da planta [x, y, altura]
 const AREAS={
  geral:{c:[22.4,26.5,17],t:[8.4,7.5,0]},
- planta:{c:[8.41,7.51,30],t:[8.4,7.5,0]},
+ planta:{c:[8.41,7.51,33],t:[8.4,7.5,0]},
  kits:{c:[9.8,18,11.5],t:[11.2,7.6,.8],title:'Linha de montagem',sub:'Linha de montagem com 6 postos, incluindo 1 bancada para giga de testes, bancadas para montagem de kits, racks e gabinetes.',chips:[['6','postos'],['1','bancada para giga de testes']]},
  gab:{c:[7.8,15.8,9],t:[14.3,9,.8],title:'Gabinetes e racks',sub:'Montagem de gabinetes e racks simultaneamente.',chips:[['6','carrinhos de gabinete'],['2','bancadas'],['1','auxiliar no transporte']]},
  retrab:{c:[14.9,17.5,8],t:[9,10.2,.6],title:'Ajustes e retrabalho',sub:'Estação de ajustes e retrabalho no meio da linha, com mesa de 2,5 m, pórtico e talha elétrica móvel, furadeira de bancada e armário de ferramentas, dando mais agilidade e qualidade à produção.',chips:[['2,5 m','mesa'],['1','pórtico com talha'],['1','técnico']]},
@@ -468,9 +468,9 @@ let tour=null;const $=id=>document.getElementById(id);
 function tourShow(i){const s=TOUR[i];TOUR_GB.forEach((g,j)=>{if(g){g.visible=j===i;gbFade(g,0);}});{const c=$('cap');if(s.cap){$('capN').textContent=String(i+1).padStart(2,'0');$('capT').textContent=s.cap;c.classList.add('on');}else c.classList.remove('on');}showPosts(TOUR_KEY[s.title]);$('tStep').textContent=(i+1)+'/'+TOUR.length;$('tTitle').textContent=s.title;$('tSub').textContent=s.sub;
   $('tChips').innerHTML=s.chips.map(([v,l])=>'<span><b>'+v+'</b> '+l+'</span>').join('');}
 function tourStart(){anim=null;$('areaBox').classList.remove('on');tour={t0:performance.now(),i:-1,from:null,labels:groups.labels.visible,flow:groups.flow.visible};PJ_OFF=TOUR.findIndex(s=>s.title.startsWith('Sala A'))*STEP-3;AB_OFF=PJ_OFF;groups.labels.visible=false;groups.flow.visible=false;
-  ctl.enabled=false;document.body.classList.add('touring');$('tourBox').classList.add('on');}
+  ctl.enabled=false;document.body.classList.add('touring');viewOff();$('tourBox').classList.add('on');}
 function tourStop(keep){if(!tour)return;TOUR_GB.forEach(g=>{if(g)g.visible=false;});$('cap').classList.remove('on');groups.high.visible=wallsOn;groups.labels.visible=tour.labels;groups.flow.visible=tour.flow;showPosts(null);abTag.visible=false;tour=null;ctl.enabled=true;
-  document.body.classList.remove('touring');$('tourBox').classList.remove('on');if(!keep)enterArea('geral');}
+  document.body.classList.remove('touring');$('tourBox').classList.remove('on');viewOff();if(!keep)enterArea('planta');}
 function tourUpdate(now){if(!tour)return;const el=Math.max(0,(now-tour.t0)/1000);if(el>=TOTAL){tourStop();return;}
   const i=Math.floor(el/STEP),k=el-i*STEP,s=TOUR[i];
   if(i!==tour.i){tour.i=i;groups.high.visible=true;tour.from={p:cam.position.clone(),t:ctl.target.clone()};tourShow(i);}
@@ -484,12 +484,13 @@ $('tourGo').addEventListener('click',()=>{setTxt(false);tourStart();});
 $('tourTxt').addEventListener('click',()=>setTxt(document.body.classList.contains('notext')));$('tourStop').addEventListener('click',()=>tourStop());
 addEventListener('keydown',e=>{if(e.key==='Escape')tourStop();});
 // abre direto no tour; ao terminar (ou em Sair) fica livre para navegar pelos botões
-setTimeout(()=>{if(!tour){setTxt(false);tourStart();}},1200);
+setTimeout(()=>{if(!tour){setTxt(false);tourStart();}},250);
 function tog(id,fn){const b=document.getElementById(id);b.addEventListener('click',()=>{const on=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',on);fn(on);});}
 tog('tWalls',on=>{wallsOn=on;groups.high.visible=on;}); tog('tFlow',on=>groups.flow.visible=on); tog('tPeople',on=>groups.people.visible=on); tog('tLabels',on=>{labelsOn=on;groups.labels.visible=on;});
 const panel=document.getElementById('panel'),hide=document.getElementById('hide');
-hide.addEventListener('click',()=>{const m=panel.classList.toggle('min');hide.textContent=m?'+':'–';hide.setAttribute('aria-label',m?'Abrir painel':'Recolher painel');});
-function size(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix();}
+hide.addEventListener('click',()=>{const m=panel.classList.toggle('min');hide.textContent=m?'+':'–';hide.setAttribute('aria-label',m?'Abrir painel':'Recolher painel');viewOff();});
+function viewOff(){const w=host.clientWidth,h=host.clientHeight,pn=document.getElementById('panel');const side=(innerWidth>760&&!document.body.classList.contains('touring')&&!pn.classList.contains('min'))?Math.round((pn.offsetWidth+16)/2):0;if(side)cam.setViewOffset(w,h,-side,0,w,h);else cam.clearViewOffset();cam.updateProjectionMatrix();}
+function size(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix();viewOff();}
 addEventListener('resize',size); size(); V._g={p:PV(AREAS.geral.c),t:PV(AREAS.geral.t)}; go('_g',true);
 (function loop(now){requestAnimationFrame(loop);
   if(anim){const k=Math.min(1,(now-anim.t0)/900),e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;cam.position.lerpVectors(anim.from.p,anim.to.p,e);ctl.target.lerpVectors(anim.from.t,anim.to.t,e);if(k>=1)anim=null;}
