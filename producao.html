@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+</head>
+<body style="margin:0">
+<title>Novo Layout Produção 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: full-screen 3D scene with a compact control panel docked top-left (bottom on phones) */
+:root{
+  --bg:#eef2f6; --scene:#e6ecf2; --panel:rgba(255,255,255,.94); --fg:#1b2633; --muted:#5b6b7c; --line:#d3dbe4; --accent:#1f7fe0; --chip:#eef3f8; --warn:#e0662a;
+  --f-display:"Archivo",system-ui,sans-serif; --f-body:"IBM Plex Sans",system-ui,sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,monospace;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{--bg:#0c121b;--scene:#0f1722;--panel:rgba(16,25,38,.92);--fg:#e3ecf5;--muted:#8fa3b8;--line:#24364d;--accent:#2fb6ff;--chip:#162435;color-scheme:dark}
+:root[data-theme="dark"] button[aria-pressed="true"]{color:#04121f}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);overflow:hidden}
+#view{position:fixed;inset:0}
+#view canvas{display:block}
+.panel{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));width:300px;max-width:calc(100vw - 32px);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:10px;box-shadow:0 8px 24px rgba(30,50,80,.12);backdrop-filter:blur(6px);max-height:calc(100% - 24px);overflow:auto}
+h1{font-family:var(--f-display);font-weight:700;font-size:18px;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--muted);font-size:12px;margin:-6px 0 0}
+.lbl{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+button{font:500 12px var(--f-body);color:var(--fg);background:var(--chip);border:1px solid var(--line);border-radius:6px;padding:6px 9px;cursor:pointer}
+button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:11.5px}
+.legend span{display:flex;align-items:center;gap:6px;min-width:0}
+.legend i{width:10px;height:10px;border-radius:2px;flex:none}
+.note{font-size:11px;color:var(--muted);line-height:1.45;margin:0}
+#hide{position:absolute;top:10px;right:10px;padding:2px 7px}
+.panel.min > :not(h1):not(#hide){display:none}
+.kpis{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:calc(100vw - 360px)}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;min-width:112px}
+.kpi b{display:block;font:700 20px var(--f-display);color:var(--fg);font-variant-numeric:tabular-nums}
+.kpi small{font:400 10.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.kpi b em{font-style:normal;color:var(--accent);font-size:12px;margin-left:3px}
+@media (max-width:900px){.kpis{display:none}}
+@media (max-width:560px){.panel{top:auto;bottom:calc(12px + env(safe-area-inset-bottom,0px));width:auto;right:max(16px,env(safe-area-inset-right,0px));max-height:46%}}
+#tourBox,#areaBox{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(760px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px 12px;display:none;flex-direction:column;gap:8px;box-shadow:0 8px 28px rgba(15,25,40,.18);transition:opacity .35s}
+#tourBox.on,#areaBox.on{display:flex}
+#tourBox .top,#areaBox .top{display:flex;align-items:baseline;gap:10px}
+#tourBox .step,#areaBox .step{font:400 11px var(--f-mono);color:var(--muted);letter-spacing:.06em}
+#tourBox h2,#areaBox h2{font:700 20px var(--f-display);margin:0;letter-spacing:-.01em;flex:1;text-wrap:balance}
+#tourBox p,#areaBox p{margin:0;font-size:13px;color:var(--muted)}
+#tourBox .chips,#areaBox .chips{display:flex;flex-wrap:wrap;gap:6px}
+#tourBox .chips span,#areaBox .chips span{background:var(--chip);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font:600 13px var(--f-body);font-variant-numeric:tabular-nums}
+#tourBox .chips span b,#areaBox .chips span b{color:var(--accent);font-family:var(--f-display)}
+#tourBox .bar{height:3px;background:var(--line);border-radius:2px;overflow:hidden}
+#tourBox .bar i{display:block;height:100%;width:0;background:var(--accent)}
+#tourGo{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+#tourBox{left:max(16px,env(safe-area-inset-left,0px));top:calc(12px + env(safe-area-inset-top,0px));bottom:auto;transform:none;width:min(340px,calc(100vw - 32px));padding:10px 12px;gap:6px;background:color-mix(in srgb,var(--panel) 88%,transparent)}
+#tourBox{width:min(290px,calc(100vw - 32px));padding:7px 10px 8px;gap:4px;border-radius:9px;background:color-mix(in srgb,var(--panel) 72%,transparent);backdrop-filter:blur(6px);box-shadow:0 2px 10px rgba(15,25,40,.10)}
+#tourBox h2{font-size:13px}
+#tourBox p{font-size:10.5px;line-height:1.35}
+#tourBox .chips{gap:4px}
+#tourBox .chips span{font-size:10px;padding:2px 7px}
+#tourBox .step{font-size:9.5px}
+#tourBox .bar{height:2px}
+body.notext #tourBox .step,body.notext #tourBox h2,body.notext #tourBox p,body.notext #tourBox .chips{display:none}
+body.notext #tourBox{width:auto;padding:5px 6px;gap:4px}
+body.notext #tourBox .bar{width:90px}
+#tourBox .top{flex-wrap:wrap}
+#tourBox #tourStop,#tourBox #tourTxt{padding:2px 6px;font-size:10px}
+body.touring .panel,body.touring .kpis{opacity:.0;pointer-events:none;transition:opacity .4s}
+#zoom{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(22px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:6px}
+#zoom button{width:38px;height:38px;font-size:18px;padding:0;background:var(--panel)}
+body.touring #zoom{opacity:0;pointer-events:none}
+#cap{position:fixed;left:max(24px,env(safe-area-inset-left,0px));bottom:calc(28px + env(safe-area-inset-bottom,0px));display:flex;align-items:baseline;gap:12px;padding:9px 16px 10px;border-radius:12px;background:rgba(255,255,255,.22);-webkit-backdrop-filter:blur(14px) saturate(150%);backdrop-filter:blur(14px) saturate(150%);border:1px solid rgba(255,255,255,.55);box-shadow:0 10px 30px rgba(15,25,40,.10);color:#15202b;opacity:0;transform:translateY(10px);transition:opacity .7s ease,transform .7s ease;pointer-events:none;z-index:5}
+#cap.on{opacity:1;transform:none}
+#cap .n{font:500 10.5px var(--f-mono);letter-spacing:.16em;color:rgba(21,32,43,.55)}
+#cap .t{font:400 15px var(--f-body);letter-spacing:.03em}
+:root[data-theme="dark"] #cap{background:rgba(12,20,32,.35);border-color:rgba(255,255,255,.18);color:#e8f0f8}
+:root[data-theme="dark"] #cap .n{color:rgba(232,240,248,.55)}
+.nav{display:flex;gap:6px;flex-wrap:wrap}.navb{font:500 12px var(--f-body);color:var(--fg);text-decoration:none;background:var(--chip);border:1px solid var(--line);border-radius:6px;padding:6px 9px}.navb:hover{border-color:var(--accent)}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400&display=swap">
+
+<div id="view" aria-label="Modelo 3D do novo layout da produção"></div>
+<div class="kpis" aria-label="Indicadores do layout">
+  <div class="kpi"><small>Produção</small><b>103,7<em>m²</em></b></div>
+  <div class="kpi"><small>Estoque Sala A</small><b>87<em>m²</em></b></div>
+  <div class="kpi"><small>Equipe</small><b>até 15<em>postos</em></b></div>
+  <div class="kpi"><small>Carrinhos</small><b>10</b></div>
+</div>
+<div id="tourBox" role="status" aria-live="polite"><div class="top"><span class="step" id="tStep"></span><h2 id="tTitle"></h2><button id="tourTxt" aria-pressed="false" hidden>Texto</button><button id="tourStop">Sair</button></div><p id="tSub"></p><div class="chips" id="tChips"></div><div class="bar"><i id="tBar"></i></div></div>
+<div id="areaBox" role="status" aria-live="polite"><div class="top"><span class="step">Área</span><h2 id="aTitle"></h2><button id="aBack">← Visão geral</button></div><p id="aSub"></p><div class="chips" id="aChips"></div></div>
+<div id="cap" aria-hidden="true"><span class="n" id="capN"></span><span class="t" id="capT"></span></div>
+<div id="zoom" aria-label="Zoom"><button id="zIn" aria-label="Aproximar">+</button><button id="zOut" aria-label="Afastar">−</button></div>
+<div class="panel" id="panel">
+  <button id="hide" aria-label="Recolher painel">–</button>
+  <h1>Produção · Novo layout</h1>
+  <div class="nav"><a class="navb" href="index.html">← Início</a><a class="navb" href="cd.html">Ver Centro de Distribuição →</a></div>
+  <p class="sub">Novo layout em 3D · arraste para girar, role para zoom</p>
+  <div class="row"><button id="tourGo">▶ Tour do projeto · 1 min</button></div>
+  <div class="lbl">Áreas · clique para entrar no detalhe</div>
+  <div class="row" id="areas">
+    <button data-a="geral" aria-pressed="true">Visão geral</button>
+    <button data-a="planta">Planta</button>
+    <button data-a="kits">Linha de montagem</button>
+    <button data-a="gab">Gabinetes e racks</button>
+    <button data-a="retrab">Ajustes e retrabalho</button>
+    <button data-a="config">Config. e testes</button>
+    <button data-a="fech">Fechamento</button>
+    <button data-a="sala">Sala A · estoque</button>
+  </div>
+  <div class="lbl">Mostrar</div>
+  <div class="row">
+    <button id="tWalls" aria-pressed="false">Paredes</button>
+    <button id="tFlow" aria-pressed="true">Fluxo</button>
+    <button id="tPeople" aria-pressed="true">Pessoas</button>
+    <button id="tLabels" aria-pressed="true">Áreas</button>
+  </div>
+  <div class="lbl">Tema</div>
+  <div class="row" id="themes">
+    <button data-t="light" aria-pressed="true">Light</button>
+    <button data-t="dark" aria-pressed="false">Black</button>
+  </div>
+  <div class="lbl">Legenda</div>
+  <div class="legend">
+    <span><i style="background:#e9cf7f"></i>Linha de montagem</span>
+    <span><i style="background:#e8b98d"></i>Montagem de kits</span>
+    <span><i style="background:#d9aea0"></i>Gabinetes e racks</span>
+    <span><i style="background:#c3b7e3"></i>Config. e testes</span>
+    <span><i style="background:#e4b2ca"></i>Fechamento</span>
+    <span><i style="background:#eda5a5"></i>Ajustes e retrabalho</span>
+    <span><i style="background:#a8d8be"></i>Produto acabado</span>
+    <span><i style="background:#d8c49a"></i>Matéria-prima</span>
+    <span><i style="background:#1c2834"></i>Líder técnico</span>
+    <span><i style="background:#2f5f9e"></i>Técnicos</span>
+    <span><i style="background:#2e7a4c"></i>Auxiliares</span>
+    <span><i style="background:#e8b52a"></i>Faixas NR-26</span>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+const host=document.getElementById('view');
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.shadowMap.enabled=true; host.appendChild(renderer.domElement);
+const scene=new THREE.Scene(); scene.background=new THREE.Color('#e6ecf2'); scene.fog=new THREE.Fog(0xe6ecf2,60,130);
+const cam=new THREE.PerspectiveCamera(42,1,0.1,300);
+const ctl=new THREE.OrbitControls(cam,renderer.domElement); ctl.enableDamping=true; ctl.maxPolarAngle=Math.PI/2.05;
+const HEMI=new THREE.HemisphereLight(0xffffff,0xb8c2cc,0.9); scene.add(HEMI);
+const sun=new THREE.DirectionalLight(0xffffff,0.8); sun.position.set(-14,30,-18); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048);
+Object.assign(sun.shadow.camera,{left:-20,right:20,top:20,bottom:-20,far:80}); scene.add(sun);
+// plan coords: x 0..16.8 (Sala A à esquerda), y 0..15
+const X0=8.4,Y0=7.5; const P=(x,y,z=0)=>new THREE.Vector3(x-X0,z,y-Y0);
+const M={}; function mat(hex,o={}){const k=hex+JSON.stringify(o);return M[k]||(M[k]=new THREE.MeshStandardMaterial(Object.assign({color:hex,roughness:.85,metalness:.05},o)));}
+const groups={walls:new THREE.Group(),high:new THREE.Group(),people:new THREE.Group(),flow:new THREE.Group(),labels:new THREE.Group()};
+Object.values(groups).forEach(g=>scene.add(g));
+// box(x,y,w,d,z,h,col,op) – mesmo formato do projeto
+function box(x,y,w,d,z,h,col,op,parent){op=op==null?1:op;
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),op<1?mat(col,{transparent:true,opacity:op}):mat(col));
+  m.position.copy(P(x+w/2,y+d/2,z+h/2)); m.castShadow=op>=1&&h>.06; m.receiveShadow=true; (parent||scene).add(m); return m;}
+const LBL={bg:'rgba(255,255,255,.95)',border:'#1f7fe0',text:'#1b2633'};
+function drawLabel(s){const {text,cv}=s.userData,x=cv.getContext('2d'),f=44,w=cv.width,r=14;x.clearRect(0,0,w,cv.height);
+  x.fillStyle=LBL.bg;x.beginPath();x.moveTo(r,0);x.arcTo(w,0,w,cv.height,r);x.arcTo(w,cv.height,0,cv.height,r);x.arcTo(0,cv.height,0,0,r);x.arcTo(0,0,w,0,r);x.fill();x.lineWidth=4;x.strokeStyle=LBL.border;x.stroke();
+  x.font=`600 ${f}px Archivo, system-ui, sans-serif`;x.fillStyle=LBL.text;x.textBaseline='middle';x.fillText(text,18,cv.height/2+2);s.material.map.needsUpdate=true;}
+function label(text,x,y,z,size=1){const cv=document.createElement('canvas'),c=cv.getContext('2d'),f=44;c.font=`600 ${f}px Archivo, system-ui, sans-serif`;
+  const w=c.measureText(text).width+36;cv.width=w;cv.height=f+26;const t=new THREE.CanvasTexture(cv);
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,depthTest:false}));s.userData={text,cv};drawLabel(s);
+  const h=0.55*size;s.scale.set(h*w/cv.height,h,1);s.position.copy(P(x,y,z));s.renderOrder=10;groups.labels.add(s);return s;}
+
+// ---------- piso ----------
+const G={};
+G.lot=box(-4,-4,24.8,23,-.06,.06,'#949da6');
+G.floor=box(0,0,5.8,15,0,.01,'#7a828b'); G.floor2=box(5.8,6.5,11,8.5,0,.01,'#7a828b'); G.floor3=box(10.8,4.8,6,1.7,0,.01,'#7a828b');
+const Z=[['#a8d8be',[[0,0,2.9,15]]],['#d8c49a',[[2.9,0,2.9,15]]],['#e9cf7f',[[5.8,6.5,5,1.4]]],
+ ['#e8b98d',[[10.8,4.8,4.4,1.7],[10.8,6.5,1.4,1.4]]],['#d9aea0',[[15.2,4.8,1.6,1.7],[12.2,6.5,4.6,5.9],[15.2,12.4,1.6,2.6]]],
+ ['#c3b7e3',[[8.9,12.4,6.3,2.6]]],['#e4b2ca',[[5.8,12.4,3.1,2.6]]],['#eda5a5',[[7.5,9.1,3.5,2.1]]]];
+Z.forEach(([c,rs])=>rs.forEach(([x,y,w,d])=>box(x,y,w,d,.011,.004,c,.55)));
+[[1.2,0.1,1.2,14.9],[4.6,0.1,4.6,14.9],[5.8,6.9,7.6,6.9],[7.6,6.9,7.6,7.9],[7.6,7.9,12.2,7.9],[12.2,7.9,12.2,12.4],[6.3,12.4,15.2,12.4],[15.2,12.4,15.2,14.95],[6.3,8.9,6.3,12.4],[7.5,9.1,11,9.1],[11,9.1,11,11.2],[7.5,11.2,11,11.2],[7.5,9.1,7.5,11.2]].forEach(([x1,y1,x2,y2])=>{
+  box(Math.min(x1,x2)-.05,Math.min(y1,y2)-.05,Math.abs(x2-x1)+.1,Math.abs(y2-y1)+.1,.016,.006,'#e8b52a');});
+
+// ---------- paredes ----------
+const EDGE=new THREE.LineBasicMaterial({color:0x1f7fe0,transparent:true,opacity:.9});
+const GLASS=new THREE.MeshStandardMaterial({color:0xa9c9ef,transparent:true,opacity:.22,roughness:.4,depthWrite:false});
+const WALL='#c4774f';
+function wallSeg(x1,y1,x2,y2,H){const t=.15,w=Math.max(Math.abs(x2-x1),t),d=Math.max(Math.abs(y2-y1),t),x=Math.min(x1,x2)-(x1===x2?t/2:0),y=Math.min(y1,y2)-(y1===y2?t/2:0);
+  box(x,y,w,d,0,1.1,WALL,1,groups.walls); const hi=box(x,y,w,d,1.1,H-1.1,'#a9c9ef',1,groups.high); hi.material=GLASS; hi.castShadow=false;
+  const e=new THREE.LineSegments(new THREE.EdgesGeometry(hi.geometry),EDGE);e.position.copy(hi.position);groups.high.add(e);}
+const H=4;
+wallSeg(0,0,0,15,H); wallSeg(0,15,5.8,15,H); wallSeg(0,0,.3,0,H); wallSeg(2.9,0,5.8,0,H);
+wallSeg(5.8,0,5.8,6.9,H); wallSeg(5.8,8.9,5.8,15,H);
+wallSeg(5.8,6.5,10.8,6.5,H); wallSeg(10.8,6.5,10.8,4.8,H); wallSeg(10.8,4.8,16.8,4.8,H); wallSeg(16.8,4.8,16.8,15,H); wallSeg(5.8,15,16.8,15,H);
+box(.3,-.05,2.6,.1,0,.03,'#cf5a1e'); box(5.75,6.9,.1,2,0,.03,'#cf5a1e');
+
+
+// ---------- equipamentos (dados do projeto R11) ----------
+const ORG='#d9622b';
+function rack(x,y,w,d){const alongY=d>w,L=alongY?d:w,n=Math.max(1,Math.round(L/2.6)),bay=L/n;
+  for(let i=0;i<n;i++){const bx=alongY?x:x+i*bay,by=alongY?y+i*bay:y,bw=alongY?w:bay,bd=alongY?bay:d;
+    [0,1.6,3.2].forEach((z,j)=>{box(bx+.08,by+.08,bw-.16,bd-.16,z+(z?.12:0),.14,'#b08a5a');
+      if((i+j)%4!==3)box(bx+.14,by+.14,bw-.28,bd-.28,z+(z?.26:.14),[.75,.55,.65][j],j%2?'#c49a6c':'#b8bcc0');
+      if(z){box(bx,by,alongY?.08:bw,alongY?bd:.08,z,.12,ORG);box(alongY?bx+bw-.08:bx,alongY?by:by+bd-.08,alongY?.08:bw,alongY?bd:.08,z,.12,ORG);}});
+    for(const [ux,uy] of [[bx,by],[alongY?bx+bw-.08:bx,alongY?by:by+bd-.08]]) box(ux,uy,.08,.08,0,4.0,ORG);}
+  const ex=alongY?x:x+w-.08,ey=alongY?y+d-.08:y; box(ex,ey,.08,.08,0,4.0,ORG); box(alongY?ex+w-.08:ex,alongY?ey:ey+d-.08,.08,.08,0,4.0,ORG);}
+const frame=(x,y,w,d,side)=>{const pts={n:[[x,y],[x+w-.05,y]],s:[[x,y+d-.05],[x+w-.05,y+d-.05]],e:[[x+w-.05,y],[x+w-.05,y+d-.05]]}[side];
+  pts.forEach(([px,py])=>box(px,py,.05,.05,.75,1.35,'#b9c1c8'));
+  if(side==='e')box(x+w-.05,y,.05,d,2.06,.05,'#b9c1c8');else box(x,side==='n'?y:y+d-.05,w,.05,2.06,.05,'#b9c1c8');
+  // luminária
+  if(side==='e')box(x+w-.25,y+.1,.2,d-.2,1.95,.05,'#fffbe6');else box(x+.1,side==='n'?y+.05:y+d-.25,w-.2,.2,1.95,.05,'#fffbe6');};
+const bench=(x,y,w,d,top,side)=>{box(x,y,w,d,0,.71,'#f2f2ef');box(x,y,w,d,.71,.04,top);if(side)frame(x,y,w,d,side);};
+const cartCab=(x,y,w,d,white,parent)=>{const g=new THREE.Group();(parent||scene).add(g);
+  box(x,y,w,d,.09,.06,'#8d969e',1,g);for(const [a,b] of [[x,y],[x+w-.04,y],[x,y+d-.04],[x+w-.04,y+d-.04]])box(a,b,.04,.04,.09,.8,'#8d969e',1,g);
+  box(x,y,w,d,.84,.05,'#8d969e',1,g); for(const [a,b] of [[x+.05,y+.05],[x+w-.13,y+.05],[x+.05,y+d-.13],[x+w-.13,y+d-.13]])box(a,b,.08,.08,0,.09,'#222',1,g);
+  box(x+(w-.53)/2,y+(d-.5)/2,.53,.5,.9,.75,white?'#e7e9ea':'#7f8a94',1,g);return g;};
+rack(.05,2.1,1.1,12.8); rack(4.65,.1,1.1,6.7); rack(4.65,9,1.1,5.9);
+label('Produto acabado',0.6,13.2,4.5,.5); label('Matéria-prima',5.2,2.0,4.5,.5); label('Matéria-prima',5.2,13.2,4.5,.5);
+// descarte central 4 × 100 L + NC
+box(5.85,9,.42,.6,0,1.5,'#c0392b',.25);
+['#2f62b3','#c0392b','#e0b42a','#777777'].forEach((c,i)=>box(5.85,9.8+i*.525,.42,.5,0,.9,c));
+// giga
+box(6.5,6.55,.9,.5,0,1.75,'#b7c0c8'); bench(8.2,6.55,1.3,.7,'#2e7d4f','n');
+// kits
+[11,12.4,13.8].forEach(x=>bench(x,4.85,1.3,.7,'#c9b48f','n'));
+box(15.3,4.85,1.4,.5,0,1.75,'#b7c0c8'); box(15.3,5.45,1.4,.5,0,2.0,'#c9d0d6');
+// gabinetes e racks
+box(12.4,6.6,2,.9,0,.14,'#b08a5a'); [12.5,13.15,13.8].forEach(x=>box(x,6.75,.55,.5,.14,.75,'#e7e9ea'));
+bench(15.85,6.65,.9,2,'#c9b48f','e'); bench(15.85,8.75,.9,2,'#c9b48f','e');
+[[13.1,8.5],[13.75,8.5],[13.1,9.1],[13.75,9.1],[13.1,9.7],[13.75,9.7]].forEach(([x,y])=>cartCab(x,y,.65,.6));
+
+box(15.35,12.55,1.3,1.2,0,.14,'#b08a5a'); box(15.45,12.65,1.1,1.0,.14,1.2,'#e7e9ea'); box(15.35,14.15,.8,.6,0,1.2,'#2a3138');
+// configuração e testes + fechamento
+[[8.9,10.2,10.275],[11,12.3,12.375],[13.1,14.4,0]].forEach(([bx,mx,cx])=>{bench(bx,14.3,1.3,.7,'#2e7d4f','s');box(mx,14.2,.8,.8,0,.75,'#c9b48f');if(cx)cartCab(cx,13.6,.65,.6);
+  box(bx+.3,14.65,.6,.05,.75,.4,'#1b2633');});
+box(5.83,14.4,.45,.55,0,.75,'#c9b48f'); box(5.9,14.5,.3,.35,.75,.22,'#2a3138');
+bench(6.3,14.3,1.3,.7,'#2e7d4f','s'); bench(7.6,14.3,1.3,.7,'#2e7d4f','s');
+cartCab(5.95,13.4,.65,.6); cartCab(6.95,13.4,.65,.6); cartCab(7.95,13.4,.65,.6);
+[5.95,6.95,7.95].forEach(x=>{const cx=x+.06,y0=13.4+.05;box(cx,y0,.53,.02,.95,.65,'#5f6a74');box(cx+.45,y0-.02,.04,.02,1.2,.12,'#1b1f24');box(cx+.04,y0+.47,.45,.02,.98,.6,'#2a3138');box(cx+.08,y0+.48,.16,.02,1.08,.14,'#2f6f3e');box(cx+.28,y0+.48,.18,.02,1.3,.1,'#e0b42a');box(cx+.1,y0+.48,.32,.02,1.45,.04,'#c0392b');});
+// retrabalho: mesa 2,5 m, pórtico com talha, furadeira de bancada no canto da mesa
+box(7.86,9.6,.06,1.1,0,.81,'#8d969e'); box(10.18,9.6,.06,1.1,0,.81,'#8d969e'); box(7.8,9.55,2.5,1.2,.81,.05,'#c9b48f');
+box(8.79,9.9,.53,.5,.86,.75,'#7f8a94');
+box(7.75,9.4,.09,1.5,0,.08,'#e0782f'); box(10.26,9.4,.09,1.5,0,.08,'#e0782f');
+box(7.75,10.1,.09,.09,0,3.0,'#e0782f'); box(10.26,10.1,.09,.09,0,3.0,'#e0782f'); box(7.75,10.1,2.6,.09,2.9,.16,'#e0782f');
+const hoist=box(9.0,10.06,.2,.17,2.62,.28,'#2a3138'); const hook=box(9.08,10.12,.04,.04,1.75,.87,'#555');
+box(9.75,9.6,.5,.45,.86,.05,'#2a3138'); box(9.96,9.65,.08,.08,.91,.75,'#8d969e'); box(9.85,9.62,.3,.28,1.4,.25,'#2f6f9e');
+box(10.6,9.9,.4,1.15,0,2.0,'#b7c0c8'); box(7.55,9.6,.12,1.2,.95,1.0,'#f7f7f5');
+
+// ---------- peças em montagem nas bancadas ----------
+const TOP=.75;
+// kits: caixa organizadora com componentes, cabos e o kit sendo montado
+[11,12.4,13.8].forEach((x,i)=>{box(x+.12,4.9,.42,.3,TOP,.13,'#3a6ea5');box(x+.17,4.94,.32,.22,TOP+.13,.02,'#2a4f7a');
+  box(x+.62,5.05,.36,.26,TOP,.16,'#c49a6c');box(x+.64,5.07,.32,.22,TOP+.16,.01,'#e9dcc5');
+  [['#d0d4d8',0],['#e0b42a',.09],['#2e7d4f',.18]].forEach(([c,o])=>box(x+.66+o,5.35,.07,.07,TOP,.05,c));
+  box(x+1.0,4.95,.22,.18,TOP,.06,'#1b1f24');box(x+1.03,4.98,.16,.12,TOP+.06,.02,'#333a42');});
+// giga: equipamento em teste ligado à giga por cabos
+box(8.35,6.62,.6,.4,TOP,.06,'#2f6f3e');box(8.42,6.68,.18,.14,TOP+.06,.05,'#1b1f24');box(8.68,6.7,.2,.1,TOP+.06,.04,'#c9b48f');
+box(9.0,6.65,.34,.3,TOP,.3,'#d9dde1');box(9.04,6.94,.26,.02,TOP+.08,.14,'#1b2633');
+box(7.4,6.8,.95,.03,TOP+.02,.03,'#1b1f24');box(7.4,6.9,.95,.03,TOP+.02,.03,'#c0392b');
+// configuração e testes: placa em teste diante de cada técnico, ligada por cabo ao computador
+[8.9,11,13.1].forEach(bx=>{box(bx+.25,14.32,.5,.34,TOP,.03,'#1d4e89');box(bx+.32,14.38,.14,.12,TOP+.03,.04,'#1b1f24');box(bx+.52,14.4,.12,.08,TOP+.03,.03,'#c9b48f');
+  box(bx+.8,14.4,.3,.04,TOP,.02,'#1b1f24');box(bx+.95,14.35,.25,.18,TOP,.04,'#2a3138');});
+// fechamento: placa sobre as bancadas
+[6.3,7.6].forEach(bx=>{box(bx+.3,14.35,.5,.34,TOP,.03,'#1d4e89');box(bx+.38,14.41,.14,.12,TOP+.03,.04,'#1b1f24');box(bx+.6,14.43,.12,.08,TOP+.03,.03,'#e0b42a');});
+// montagem de gabinetes: gabinete aberto em cada bancada
+[[6.95,7.65],[9.05,9.75]].forEach(([y0,yc])=>{box(16.05,yc-.3,.55,.6,TOP,.62,'#8d969e');box(16.07,yc-.27,.02,.54,TOP+.05,.52,'#3a4754');
+  box(15.98,yc-.3,.04,.6,TOP+.04,.03,'#b9c1c8');box(16.08,yc-.2,.03,.18,TOP+.12,.12,'#2f6f3e');box(16.08,yc+.05,.03,.12,TOP+.3,.1,'#e0b42a');
+  box(16.0,yc+.32,.02,.5,TOP,.6,'#9aa3ab');});
+// ---------- pessoas ----------
+const FC={L:'#1c2834',T:'#2f5f9e',A:'#2e7a4c'};
+const WORKERS=[];
+// boneco articulado: pernas, tronco, cabeça e braços com pivô no ombro
+function makePerson(col,mode){const g=new THREE.Group();
+  const part=(w,h,d,c,x,y,z,parent)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(c));m.position.set(x,y,z);m.castShadow=true;(parent||g).add(m);return m;};
+  const legs=[-.08,.08].map(x=>{const p=new THREE.Group();p.position.set(x,.85,0);g.add(p);part(.12,.85,.16,'#3a3f45',0,-.425,0,p);part(.13,.08,.24,'#222',0,-.82,.04,p);return p;});
+  const body=new THREE.Group();body.position.set(0,.85,0);g.add(body);
+  const COAT='#f4f5f2';part(.38,.62,.24,COAT,0,.3,0,body); part(.39,.07,.25,col,0,.42,0,body); part(.4,.12,.26,COAT,0,-.04,0,body); part(.2,.05,.25,col,0,.59,0,body);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.12,14,10),mat('#d9b38c'));head.position.set(0,.78,0);head.castShadow=true;body.add(head);
+  part(.25,.06,.27,col==='#1c2834'?'#ffffff':'#f0c419',0,.89,.02,body); // capacete/boné
+  const arms=[-.24,.24].map(x=>{const p=new THREE.Group();p.position.set(x,.56,0);body.add(p);part(.1,.5,.12,'#f4f5f2',0,-.25,0,p);part(.105,.05,.125,col,0,-.47,0,p);part(.09,.09,.09,'#d9b38c',0,-.53,0,p);return p;});
+  const w={g,legs,body,arms,head,mode,ph:Math.random()*6.28,sp:.8+Math.random()*.5};WORKERS.push(w);return w;}
+// poltrona de escritório (fica no piso mesmo com as pessoas ocultas)
+function chair(x,y,face){const g=new THREE.Group();g.position.copy(P(x,y,0));g.rotation.y=face;scene.add(g);
+  const part=(w,h,d,c,px,py,pz)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(c));m.position.set(px,py,pz);m.castShadow=true;m.receiveShadow=true;g.add(m);return m;};
+  part(.5,.08,.48,'#2a3138',0,.46,-.02); part(.48,.5,.07,'#2a3138',0,.78,-.27); part(.06,.32,.06,'#555b62',0,.28,-.27);
+  part(.05,.36,.05,'#8d969e',0,.25,0); part(.56,.04,.06,'#8d969e',0,.06,0); part(.06,.04,.56,'#8d969e',0,.06,0);
+  part(.05,.04,.3,'#2a3138',-.27,.62,-.02); part(.05,.04,.3,'#2a3138',.27,.62,-.02);
+  [[-.26,0],[.26,0],[0,-.26],[0,.26]].forEach(([a,b])=>part(.06,.05,.06,'#1b1f24',a,.025,b));return g;}
+function person(x,y,col,face,mode){mode=mode||'bench';const w=makePerson(col,mode);groups.people.add(w.g);w.g.position.copy(P(x,y,0));w.g.rotation.y=face;w.base=w.g.position.clone();
+  if(mode==='bench'||mode==='type'){w.seated=true;w.body.position.y=.5;w.legs.forEach(l=>l.position.y=.52);chair(x,y,face);}
+  return w;}
+const F={py:0,ny:Math.PI,px:Math.PI/2,nx:-Math.PI/2};
+// [função, x, y, direção, atividade]
+[["L",8.0,8.65,F.px,'patrol'],["T",8.85,7.6,F.ny,'bench'],["T",9.1,11,F.ny,'tool'],
+ ["T",9.55,13.85,F.py,'type'],["T",11.65,13.85,F.py,'type'],["T",13.75,13.85,F.py,'type'],["T",6.275,13.0,F.py,'tool'],["A",7.275,13.0,F.py,'tool'],
+ ["A",11.65,5.95,F.ny,'bench'],["A",13.05,5.95,F.ny,'bench'],["A",14.45,5.95,F.ny,'bench'],
+ ["A",15.45,7.65,F.px,'tool'],["A",15.45,9.75,F.px,'bench'],["A",8.275,13.0,F.py,'tool']]
+ .forEach(([f,x,y,d,m])=>person(x,y,FC[f],d,m));
+// rota com pausas: anda entre os pontos e para em cada um (ida e volta)
+function routeAt(pts,speed,pause,t){const L=[];let tot=0;for(let i=0;i<pts.length-1;i++){const l=Math.hypot(pts[i+1][0]-pts[i][0],pts[i+1][1]-pts[i][1]);L.push(l);tot+=l;}
+  const PZ=Array.isArray(pause)?pause:L.map(()=>pause),PB=Array.isArray(pause)?[...pause].reverse():PZ;const legT=L.map(l=>l/speed),cyc=2*legT.reduce((a,b)=>a+b,0)+PZ.reduce((a,b)=>a+b,0)+PB.reduce((a,b)=>a+b,0);let r=t%cyc;
+  const seq=[];for(let i=0;i<L.length;i++)seq.push([i,1]);for(let i=L.length-1;i>=0;i--)seq.push([i,-1]);
+  for(const [i,dir] of seq){const a=dir>0?pts[i]:pts[i+1],b=dir>0?pts[i+1]:pts[i];
+    if(r<legT[i]){const f=r/legT[i];return {x:a[0]+(b[0]-a[0])*f,y:a[1]+(b[1]-a[1])*f,hd:Math.atan2(b[0]-a[0],b[1]-a[1]),moving:true};}
+    r-=legT[i];const pz=dir>0?PZ[i]:(Array.isArray(pause)?(i>0?PZ[i-1]:2.0):PZ[i]);if(r<pz)return {x:b[0],y:b[1],hd:Math.atan2(b[0]-a[0],b[1]-a[1]),moving:false};r-=pz;}
+  return {x:pts[0][0],y:pts[0][1],hd:0,moving:false};}
+// líder: percorre o corredor em U em volta de Ajustes e retrabalho, parando junto às bancadas
+// destaque do líder técnico: anel no piso e etiqueta acompanhando
+const leadRing=new THREE.Mesh(new THREE.RingGeometry(.38,.5,32),new THREE.MeshBasicMaterial({color:0x1f7fe0,transparent:true,opacity:.85,side:THREE.DoubleSide,depthWrite:false}));leadRing.rotation.x=-Math.PI/2;scene.add(leadRing);
+const leadTag=label('Líder técnico',0,0,2.25,.5);groups.labels.remove(leadTag);scene.add(leadTag);
+const LEAD_PATH=[[8.0,8.65],[10.0,8.65],[11.6,8.65],[11.6,10.2],[11.6,11.4],[9.8,11.4],[8.0,11.4]];
+function workersUpdate(t,dt){WORKERS.forEach(w=>{const k=t*w.sp+w.ph,[aL,aR]=w.arms;
+  if(w.mode==='patrol'){const r=routeAt(LEAD_PATH,.55,2.2,t);w.g.position.copy(P(r.x,r.y,0));w.g.rotation.y=r.hd;leadRing.position.copy(P(r.x,r.y,.03));leadTag.position.copy(P(r.x,r.y,2.25));leadRing.visible=leadTag.visible=groups.people.visible&&!!tour&&tour.i>=0&&TOUR[tour.i].title==='Ajustes e retrabalho';
+    w.body.rotation.set(0,0,0);w.head.rotation.set(0,0,0);aL.rotation.set(0,0,0);aR.rotation.set(0,0,0);
+    if(r.moving){const s=Math.sin(t*6);w.legs[0].rotation.x=s*.45;w.legs[1].rotation.x=-s*.45;aL.rotation.x=-s*.35;aR.rotation.x=s*.35;w.body.position.y=.85+Math.abs(s)*.02;}
+    else{w.legs.forEach(l=>l.rotation.x=0);w.body.position.y=.85;w.head.rotation.y=Math.sin(t*.8)*.6;aR.rotation.x=-.6-Math.max(0,Math.sin(t*1.4))*.6;}
+    return;}
+  w.legs.forEach(l=>l.rotation.x=w.seated?-1.45:0); w.body.rotation.set(0,0,0); w.head.rotation.set(0,0,0);
+  if(w.mode==='pj'){w.arms.forEach(r=>r.rotation.x=-1.1);return;}
+  if(w.mode==='walk'){const s=Math.sin(t*7+w.ph);w.legs[0].rotation.x=s*.5;w.legs[1].rotation.x=-s*.5;aL.rotation.x=-1.1;aR.rotation.x=-1.1;w.body.position.y=.85+Math.abs(s)*.03;return;}
+  if(w.mode==='bench'){w.body.rotation.x=.18;aL.rotation.x=-1.0-Math.sin(k*3)*.3;aR.rotation.x=-1.0-Math.sin(k*3+1.8)*.3;aL.rotation.z=.15;aR.rotation.z=-.15;w.head.rotation.x=.25;}
+  else if(w.mode==='type'){w.body.rotation.x=.08;aL.rotation.x=-1.25+Math.sin(k*9)*.06;aR.rotation.x=-1.25+Math.sin(k*9+1.2)*.06;w.head.rotation.x=.1+Math.sin(k*.6)*.05;}
+  else if(w.mode==='tool'){w.body.rotation.x=.22;aR.rotation.x=-1.3-Math.sin(k*5)*.35;aR.rotation.z=-.1;aL.rotation.x=-.8;w.head.rotation.x=.3;}
+  else if(w.mode==='lead'){w.body.rotation.y=Math.sin(k*.5)*.5;aR.rotation.x=-.7-Math.max(0,Math.sin(k*1.3))*.9;aL.rotation.x=-.2;w.head.rotation.y=Math.sin(k*.5+.4)*.4;}
+  else if(w.mode==='shuttle'){const c=(Math.sin(k*.7)+1)/2;w.g.position.x=w.base.x+(c-.5)*.0;w.g.position.z=w.base.z+(c-.5)*1.2;
+    const sp=Math.cos(k*.7);const mv=Math.abs(sp)>.2;const s=Math.sin(t*7);w.legs[0].rotation.x=mv?s*.45:0;w.legs[1].rotation.x=mv?-s*.45:0;
+    w.g.rotation.y=sp>0?0:Math.PI; aL.rotation.x=-.9;aR.rotation.x=-.9;}
+});}
+
+// ---------- fluxo em U + carrinho animado ----------
+const FP=[[6.2,7.9],[7.6,7.9],[7.6,8.4],[11.6,8.4],[11.6,11.8],[6.9,11.8],[6.9,8.9],[6.2,8.9],[4.0,8.0],[1.6,8.0]];
+const flowMat=new THREE.MeshBasicMaterial({color:0xe0662a,transparent:true,opacity:.7});
+for(let i=0;i<FP.length-1;i++){const [a,b]=[FP[i],FP[i+1]];const p1=P(a[0],a[1],.03),p2=P(b[0],b[1],.03),len=p1.distanceTo(p2);if(len<.01)continue;
+  const m=new THREE.Mesh(new THREE.BoxGeometry(.12,.012,len),flowMat);m.position.copy(p1.clone().add(p2).multiplyScalar(.5));m.lookAt(p2);groups.flow.add(m);
+  const ar=new THREE.Mesh(new THREE.ConeGeometry(.16,.4,3),flowMat);ar.position.copy(p1.clone().lerp(p2,.6));ar.position.y=.05;
+  const dir=p2.clone().sub(p1).normalize();ar.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir);groups.flow.add(ar);}
+// rota do carrinho: giga → kits → gabinetes → config → fechamento → PA
+// saída da giga → corredor dos kits e gabinetes → configuração → fechamento → Sala A (PA)
+const RT=[[10.0,8.0],[14.8,8.0],[14.8,12.0],[7.2,12.0],[7.2,7.95],[4.6,7.95]];
+const cart=new THREE.Group(); scene.add(cart);
+(function(){const c=cartCab(-.325,-.3,.65,.6,true,cart);c.position.set(X0,0,Y0);})();
+const cw=makePerson(FC.A,'walk');cart.add(cw.g);cw.g.position.set(0,0,-.55);
+const cl=label('Equipamento em fluxo',0,0,2.2,.5); cl.userData.follow=true;
+const segL=[];let tot=0;for(let i=0;i<RT.length-1;i++){const l=Math.hypot(RT[i+1][0]-RT[i][0],RT[i+1][1]-RT[i][1]);segL.push(l);tot+=l;}
+let cT=0;
+function cartUpdate(dt){cT=(cT+dt*0.55)%(tot+6);let d=Math.min(cT,tot),i=0;while(i<segL.length-1&&d>segL[i]){d-=segL[i];i++;}
+  const a=RT[i],b=RT[i+1],f=Math.min(1,d/segL[i]);const x=a[0]+(b[0]-a[0])*f,y=a[1]+(b[1]-a[1])*f;
+  cart.position.copy(P(x,y,0)); cart.rotation.y=Math.atan2(-(b[0]-a[0]),-(b[1]-a[1]))+Math.PI; cart.visible=cT<tot+1;
+  cl.position.copy(P(x,y,2.2)); cl.visible=cart.visible&&groups.labels.visible;
+  hook.scale.y=1; hook.position.y=1.75+.87/2+Math.sin(performance.now()/900)*.25; }
+// paleteira na Sala A
+const PJ=new THREE.Group(); scene.add(PJ);
+(function(){const add=(w,h,d,x,y,z,c)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(c));m.position.set(x,y,z);m.castShadow=true;PJ.add(m);return m;};
+ add(.55,.08,1.15,0,.06,0,'#e0b42a'); add(.5,.5,.2,0,.3,-.65,'#e0b42a'); add(.05,1.0,.05,0,.75,-.75,'#222');
+ PJ.userData.load=[add(1.0,.14,1.2,0,.17,.05,'#a97b4a'),add(.95,.85,1.1,0,.67,.05,'#c49a6c')];})();
+// paleteira: entra pela porta com o pallet, guarda no porta-pallet de PA e volta vazia
+const PJ_PATH=[[1.75,-2.6],[1.75,9.9]],PJ_PAUSE=[3.0];let pjT=0;
+// porta da Sala A com 2 folhas iguais de 1,3 m: abrem para a paleteira passar
+const DOOR=[[.3,1],[2.9,-1]].map(([x,sd])=>{const g=new THREE.Group();g.position.copy(P(x,0,0));scene.add(g);
+  const m=new THREE.Mesh(new THREE.BoxGeometry(1.28,2.1,.05),mat('#b9c1c8'));m.position.set(sd*.64,1.05,0);m.castShadow=true;g.add(m);
+  const k=new THREE.Mesh(new THREE.BoxGeometry(.04,.04,.12),mat('#1b1f24'));k.position.set(sd*1.15,1.05,0);g.add(k);return {g,sd,a:0};});
+function doorUpdate(dt){const d=PJ.position.distanceTo(P(1.6,0,0));const want=d<3.2?Math.PI/2:0;
+  DOOR.forEach(o=>{o.a+=(want-o.a)*Math.min(1,dt*3);o.g.rotation.y=-o.sd*o.a;});}
+let PJ_OFF=0;
+function pjUpdate(dt){if(tour)pjT=(performance.now()-tour.t0)/1000-PJ_OFF;else pjT+=dt;const r=pjT<0?{x:PJ_PATH[0][0],y:PJ_PATH[0][1],hd:0,moving:false}:routeAt(PJ_PATH,.8,PJ_PAUSE,pjT);PJ.position.copy(P(r.x,r.y,0));
+  const atRack=!r.moving&&Math.abs(r.x-1.75)<.01&&Math.abs(r.y-9.9)<.01, out=!r.moving&&r.y<-2;
+  PJ.rotation.y=atRack?-Math.PI/2:r.hd;
+  // carregado na ida, vazio na volta
+  const L=PJ_PATH.reduce((a,p,i)=>i?a+Math.hypot(p[0]-PJ_PATH[i-1][0],p[1]-PJ_PATH[i-1][1]):0,0),half=L/.8+PJ_PAUSE.reduce((a,b)=>a+b,0);
+  const ph=pjT<0?0:pjT%(2*half);const loaded=ph<half-1.5;PJ.userData.load.forEach(m=>m.visible=loaded);doorUpdate(dt);
+  const s=Math.sin(performance.now()/1000*7),mv=r.moving;pw.legs[0].rotation.x=mv?s*.45:0;pw.legs[1].rotation.x=mv?-s*.45:0;}
+const pw=makePerson(FC.A,'pj');PJ.add(pw.g);pw.g.position.set(0,0,-1.15);
+// auxiliar de abastecimento: leva a matéria-prima da Sala A para as células, em ciclos contínuos
+const AB=new THREE.Group();scene.add(AB);
+(function(){const add=(w,h,d,x,y,z,c)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(c));m.position.set(x,y,z);m.castShadow=true;AB.add(m);return m;};
+ add(.5,.04,.7,0,.12,.55,'#8d969e');add(.5,.04,.7,0,.55,.55,'#8d969e');add(.04,.9,.04,-.23,.45,.22,'#8d969e');add(.04,.9,.04,.23,.45,.22,'#8d969e');add(.5,.04,.04,0,.9,.22,'#8d969e');
+ [[-.2,.25],[.2,.25],[-.2,.85],[.2,.85]].forEach(([a,b])=>add(.06,.08,.06,a,.04,b,'#1b1f24'));
+ AB.userData.load=[add(.42,.16,.28,0,.22,.42,'#3a6ea5'),add(.42,.16,.28,0,.22,.72,'#e0b42a'),add(.42,.14,.28,0,.64,.55,'#2e7d4f')];})();
+const aw=makePerson(FC.A,'pj');AB.add(aw.g);aw.g.position.set(0,0,-.25);
+const abTag=label('Auxiliar · abastecimento contínuo',0,0,2.4,.7);groups.labels.remove(abTag);scene.add(abTag);abTag.visible=false;
+const AB_PATH=[[3.9,3.0],[3.9,7.35],[5.95,7.35]];let abT=0;
+let AB_OFF=0;
+function abUpdate(dt){if(tour)abT=Math.max(0,(performance.now()-tour.t0)/1000-AB_OFF);else abT+=dt;const r=routeAt(AB_PATH,.6,[.3,3.0],abT);AB.position.copy(P(r.x,r.y,0));
+  const atMP=!r.moving&&r.y<3.01,atCell=!r.moving&&r.x>5.94;AB.rotation.y=(atMP||atCell)?Math.PI/2:r.hd;
+  const half=6.35/.6+3.3,ph=abT%(2*half);AB.userData.load.forEach(m=>m.visible=ph<half-1.5);
+  const s=Math.sin(performance.now()/1000*7);aw.legs[0].rotation.x=r.moving?s*.45:0;aw.legs[1].rotation.x=r.moving?-s*.45:0;
+  abTag.position.copy(P(r.x,r.y,2.4));}
+
+// ---------- nomes ----------
+label('Sala A · Estoque 87 m²',2.9,7.5,5.2,.85);
+label('Produção · 103,7 m²',11.3,10.5,5.2,1.15);
+label('Linha de montagem',9.6,6.9,2.6,.7); label('Montagem de kits',12.4,5.2,2.6,.7); label('Gabinetes e racks',14.3,9.4,2.7,.7);
+label('Configuração e testes',11.6,14.6,2.6,.7); label('Fechamento',7.1,14.6,2.6,.7); label('Ajustes e retrabalho',9.05,10.1,3.5,.7);
+
+
+// ---------- tema ----------
+const THEMES={light:{bg:0xe6ecf2,lot:0x949da6,floor:0x7a828b,wall:0xc4774f,glass:0xa9c9ef,gop:.22,edge:0x1f7fe0,flow:0xe0662a,sky:0xffffff,gnd:0xb8c2cc,lb:{bg:'rgba(255,255,255,.95)',border:'#1f7fe0',text:'#1b2633'}},
+ dark:{bg:0x0f1722,lot:0x1a222c,floor:0x39424d,wall:0x7a4630,glass:0x1e4a7a,gop:.28,edge:0x2fb6ff,flow:0xff8a4c,sky:0xb9d4ff,gnd:0x1a2230,lb:{bg:'rgba(10,24,40,.9)',border:'#2fb6ff',text:'#ffffff'}}};
+function applyTheme(t){const T=THEMES[t];scene.background.setHex(T.bg);scene.fog.color.setHex(T.bg);G.lot.material.color.setHex(T.lot);G.floor.material.color.setHex(T.floor);
+ mat(WALL).color.setHex(T.wall);GLASS.color.setHex(T.glass);GLASS.opacity=T.gop;EDGE.color.setHex(T.edge);flowMat.color.setHex(T.flow);HEMI.color.setHex(T.sky);HEMI.groundColor.setHex(T.gnd);
+ Object.assign(LBL,T.lb);groups.labels.children.forEach(drawLabel);document.documentElement.setAttribute('data-theme',t);
+ document.querySelectorAll('#themes button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t));try{localStorage.setItem('prod3d-theme',t);}catch(e){}}
+document.querySelectorAll('#themes button').forEach(b=>b.addEventListener('click',()=>applyTheme(b.dataset.t)));
+let t0='light';try{t0=localStorage.getItem('prod3d-theme')||'light';}catch(e){} applyTheme(t0);
+
+// ---------- vistas e áreas ----------
+const V={};let anim=null;
+function go(k,instant){const v=V[k];const to={p:new THREE.Vector3(...v.p),t:new THREE.Vector3(...v.t)};
+  if(instant||matchMedia('(prefers-reduced-motion: reduce)').matches){cam.position.copy(to.p);ctl.target.copy(to.t);return;}
+  anim={from:{p:cam.position.clone(),t:ctl.target.clone()},to,t0:performance.now()};}
+// c = câmera e t = alvo, em coordenadas da planta [x, y, altura]
+const AREAS={
+ geral:{c:[22.4,26.5,17],t:[8.4,7.5,0]},
+ planta:{c:[8.41,7.51,30],t:[8.4,7.5,0]},
+ kits:{c:[9.8,18,11.5],t:[11.2,7.6,.8],title:'Linha de montagem',sub:'Linha de montagem com 6 postos, incluindo 1 bancada para giga de testes, bancadas para montagem de kits, racks e gabinetes.',chips:[['6','postos'],['1','bancada para giga de testes']]},
+ gab:{c:[7.8,15.8,9],t:[14.3,9,.8],title:'Gabinetes e racks',sub:'Montagem de gabinetes e racks simultaneamente.',chips:[['6','carrinhos de gabinete'],['2','bancadas'],['1','auxiliar no transporte']]},
+ retrab:{c:[14.9,17.5,8],t:[9,10.2,.6],title:'Ajustes e retrabalho',sub:'Estação de ajustes e retrabalho no meio da linha, com mesa de 2,5 m, pórtico e talha elétrica móvel, furadeira de bancada e armário de ferramentas, dando mais agilidade e qualidade à produção.',chips:[['2,5 m','mesa'],['1','pórtico com talha'],['1','técnico']]},
+ config:{c:[11.6,5.2,10],t:[11.6,14.3,.8],title:'Configuração e testes',sub:'3 postos de configuração e testes em paralelo, eliminando o gargalo do layout anterior.',chips:[['3','postos em paralelo']]},
+ fech:{c:[10.6,9.6,5.2],t:[7.4,13.5,.7],title:'Fechamento',sub:'Até 3 postos para fechamento dos equipamentos; o equipamento pronto segue para a Sala A.',chips:[['até 3','postos']]},
+ sala:{c:[-4.5,2.5,13],t:[3.6,6.2,0],title:'Sala A · estoque 87 m²',sub:'Porta-pallets de produto acabado e matéria-prima. Um auxiliar faz o abastecimento contínuo das células com carrinho, da matéria-prima até o início da linha.',chips:[['87 m²','estoque'],['1','auxiliar no abastecimento']]}};
+const PV=(a)=>P(a[0],a[1],a[2]).toArray();
+let wallsOn=false,labelsOn=true;groups.high.visible=false;
+// postos numerados, destacados ao abrir a área (e na parada do tour)
+const POSTS_BY={
+ kits:[[8.15,6.5,1.4,1.45],[10.95,4.8,1.4,1.45],[12.35,4.8,1.4,1.45],[13.75,4.8,1.4,1.45],[15.15,6.6,1.65,2.1],[15.15,8.7,1.65,2.1]],
+ config:[[13.05,13.45,1.4,1.55],[10.95,13.45,1.4,1.55],[8.85,13.45,1.4,1.55]],
+ fech:[[7.9,12.55,1.0,2.4],[6.9,12.55,1.0,2.4],[5.9,12.55,1.0,2.4]],
+ retrab:[[7.5,9.1,3.5,2.1]]};
+const POSTG={};
+Object.entries(POSTS_BY).forEach(([k,list])=>{const G2=new THREE.Group();G2.visible=false;scene.add(G2);POSTG[k]=G2;
+ list.forEach(([x,y,w,d],i)=>{
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,.02,d),new THREE.MeshBasicMaterial({color:0x1f7fe0,transparent:true,opacity:.28,depthWrite:false}));m.position.copy(P(x+w/2,y+d/2,.03));G2.add(m);
+  const e=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w,.02,d)),new THREE.LineBasicMaterial({color:0x1f7fe0}));e.position.copy(m.position);G2.add(e);
+  const sp=label(String(i+1),x+w/2,y+d/2,2.0,.55);groups.labels.remove(sp);G2.add(sp);});});
+const showPosts=k=>Object.entries(POSTG).forEach(([kk,g])=>g.visible=kk===k);
+const TOUR_KEY={'Linha de montagem':'kits','Configuração e testes':'config','Fechamento':'fech','Ajustes e retrabalho':'retrab'};
+function enterArea(k){const A=AREAS[k];if(!A)return;if(tour)tourStop(true);showPosts(k);
+  V['_'+k]={p:PV(A.c),t:PV(A.t)};go('_'+k);
+  const detail=!!A.title;groups.labels.visible=labelsOn&&!detail;
+  document.querySelectorAll('#areas button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.a===k));
+  const box=document.getElementById('areaBox');if(detail){document.getElementById('aTitle').textContent=A.title;document.getElementById('aSub').textContent=A.sub;
+    document.getElementById('aChips').innerHTML=A.chips.map(([v,l])=>'<span><b>'+v+'</b> '+l+'</span>').join('');box.classList.add('on');}else box.classList.remove('on');}
+document.querySelectorAll('#areas button').forEach(x=>x.addEventListener('click',()=>enterArea(x.dataset.a)));
+document.getElementById('aBack').addEventListener('click',()=>enterArea('geral'));
+function zoomBy(f){anim=null;const off=cam.position.clone().sub(ctl.target).multiplyScalar(f);if(off.length()<1.2||off.length()>120)return;cam.position.copy(ctl.target.clone().add(off));}
+document.getElementById('zIn').addEventListener('click',()=>zoomBy(.75));document.getElementById('zOut').addEventListener('click',()=>zoomBy(1.33));
+ctl.minDistance=1.2;ctl.maxDistance=120;
+
+// ---------- tour do projeto (≈ 1 min) ----------
+const TOUR=[
+ {c:[22.4,26.5,17],t:[8.4,7.5,0],cap:'Novo layout · Produção',title:'Novo layout · Produção',sub:'Produção na antiga área do estoque, com linha em U e a Sala A como estoque de produto acabado e matéria-prima.',chips:[['103,7 m²','produção'],['até 15','postos']]},
+ {c:[9.8,18,11.5],t:[11.2,7.6,.8],cap:'Linha de montagem',gb:[8.1,4.8,16.8,10.9,2.4],title:'Linha de montagem',sub:'Linha de montagem com 6 postos, incluindo 1 bancada para giga de testes, bancadas para montagem de kits, racks e gabinetes.',chips:[['6','postos'],['1','bancada para giga de testes']]},
+ {c:[7.8,15.8,9],t:[14.3,9,.8],cap:'Gabinetes e racks',gb:[12.2,6.5,16.8,12.4,2.4],title:'Gabinetes e racks',sub:'Montagem de gabinetes e racks simultaneamente.',chips:[['6','carrinhos'],['2','bancadas']]},
+ {c:[14.9,17.5,8],t:[9,10.2,.6],cap:'Ajustes e retrabalho',gb:[7.5,9.1,11,11.2,3.2],title:'Ajustes e retrabalho',sub:'Estação de ajustes e retrabalho no meio da linha, com mesa de 2,5 m, pórtico e talha elétrica móvel, furadeira de bancada e armário de ferramentas, dando mais agilidade e qualidade à produção.',chips:[['2,5 m','mesa'],['1','pórtico com talha'],['1','técnico']]},
+ {c:[11.6,5.2,10],t:[11.6,14.3,.8],cap:'Configuração e testes',gb:[8.8,12.4,15.2,15,2.4],title:'Configuração e testes',sub:'3 postos de configuração e testes em paralelo, eliminando o gargalo do layout anterior.',chips:[['3','postos em paralelo']]},
+ {c:[10.6,9.6,5.2],t:[7.4,13.5,.7],cap:'Fechamento',gb:[5.8,12.4,8.9,15,2.4],title:'Fechamento',sub:'Até 3 postos para fechamento dos equipamentos; o equipamento pronto segue para a Sala A.',chips:[['até 3','postos']]},
+ {c:[-5.2,-3.2,10.5],t:[3.4,6.0,.3],cap:'Sala A · abastecimento contínuo',gb:[0,0,5.8,15,4.2],title:'Sala A · estoque 87 m²',sub:'Produto acabado e matéria-prima em porta-pallets, com a matéria-prima do lado da porta da produção.',chips:[['87 m²','estoque']]},
+ {c:[2.95,0.9,3.3],t:[2.8,11.5,0.2],still:1,cap:'Corredor do estoque',title:'Corredor do estoque',sub:'Corredor central da Sala A entre os porta-pallets de produto acabado e de matéria-prima, livre para a paleteira.',chips:[['Paleteira','no corredor central']]},
+ {c:[22.4,26.5,17],t:[8.4,7.5,0],title:'Pronto para produzir',sub:'Fluxo contínuo da linha de montagem ao fechamento, ajustes e retrabalho no centro e estoque ao lado da linha.',chips:[['103,7 m²','produção'],['até 15','postos']]}];
+const STEP=6.6,MOVE=2.0,TOTAL=TOUR.length*STEP;
+// ---------- caixa de vidro da área em destaque (tour) ----------
+function glassBox(b){const [u1,v1,u2,v2,h,y0=0]=b;const p1=P(u1,v1,y0),p2=P(u2,v2,y0);
+  const geo=new THREE.BoxGeometry(Math.abs(p2.x-p1.x),.02,Math.abs(p2.z-p1.z));const g=new THREE.Group();g.position.set((p1.x+p2.x)/2,p1.y+.035,(p1.z+p2.z)/2);
+  const f=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0x5fb2ff,transparent:true,opacity:0,depthWrite:false}));
+  const e=new THREE.LineSegments(new THREE.EdgesGeometry(geo),new THREE.LineBasicMaterial({color:0x1f7fe0,transparent:true,opacity:0,depthWrite:false}));
+  g.add(f,e);g.visible=false;g.renderOrder=5;scene.add(g);g.userData={f,e};return g;}
+function gbFade(g,k){if(!g)return;g.userData.f.material.opacity=.22*k;g.userData.e.material.opacity=.9*k;}
+const TOUR_GB=TOUR.map(()=>null);
+let tour=null;const $=id=>document.getElementById(id);
+function tourShow(i){const s=TOUR[i];TOUR_GB.forEach((g,j)=>{if(g){g.visible=j===i;gbFade(g,0);}});{const c=$('cap');if(s.cap){$('capN').textContent=String(i+1).padStart(2,'0');$('capT').textContent=s.cap;c.classList.add('on');}else c.classList.remove('on');}showPosts(TOUR_KEY[s.title]);$('tStep').textContent=(i+1)+'/'+TOUR.length;$('tTitle').textContent=s.title;$('tSub').textContent=s.sub;
+  $('tChips').innerHTML=s.chips.map(([v,l])=>'<span><b>'+v+'</b> '+l+'</span>').join('');}
+function tourStart(){anim=null;$('areaBox').classList.remove('on');tour={t0:performance.now(),i:-1,from:null,labels:groups.labels.visible,flow:groups.flow.visible};PJ_OFF=TOUR.findIndex(s=>s.title.startsWith('Sala A'))*STEP-3;AB_OFF=PJ_OFF;groups.labels.visible=false;groups.flow.visible=false;
+  ctl.enabled=false;document.body.classList.add('touring');$('tourBox').classList.add('on');}
+function tourStop(keep){if(!tour)return;TOUR_GB.forEach(g=>{if(g)g.visible=false;});$('cap').classList.remove('on');groups.high.visible=wallsOn;groups.labels.visible=tour.labels;groups.flow.visible=tour.flow;showPosts(null);abTag.visible=false;tour=null;ctl.enabled=true;
+  document.body.classList.remove('touring');$('tourBox').classList.remove('on');if(!keep)enterArea('geral');}
+function tourUpdate(now){if(!tour)return;const el=Math.max(0,(now-tour.t0)/1000);if(el>=TOTAL){tourStop();return;}
+  const i=Math.floor(el/STEP),k=el-i*STEP,s=TOUR[i];
+  if(i!==tour.i){tour.i=i;groups.high.visible=true;tour.from={p:cam.position.clone(),t:ctl.target.clone()};tourShow(i);}
+  const to=P(s.c[0],s.c[1],s.c[2]),tt=P(s.t[0],s.t[1],s.t[2]);
+  const rm=matchMedia('(prefers-reduced-motion: reduce)').matches;let e=rm?1:Math.min(1,k/MOVE);e=e<.5?2*e*e:1-Math.pow(-2*e+2,2)/2;gbFade(TOUR_GB[i],e);
+  const hold=Math.max(0,k-MOVE),push=1-.12*Math.min(1,hold/(STEP-MOVE)),ang=(rm||s.still)?0:hold*0.035;const off=to.clone().sub(tt);const ca=Math.cos(ang),sa=Math.sin(ang);const rot=new THREE.Vector3((off.x*ca-off.z*sa)*push,off.y*push,(off.x*sa+off.z*ca)*push).add(tt);
+  cam.position.lerpVectors(tour.from.p,rot,e);ctl.target.lerpVectors(tour.from.t,tt,e);cam.lookAt(ctl.target);
+  $('tBar').style.width=(100*el/TOTAL).toFixed(1)+'%';}
+const setTxt=on=>{document.body.classList.toggle('notext',!on);$('tourTxt').setAttribute('aria-pressed',on);};
+$('tourGo').addEventListener('click',()=>{setTxt(false);tourStart();});
+$('tourTxt').addEventListener('click',()=>setTxt(document.body.classList.contains('notext')));$('tourStop').addEventListener('click',()=>tourStop());
+addEventListener('keydown',e=>{if(e.key==='Escape')tourStop();});
+// abre direto no tour; ao terminar (ou em Sair) fica livre para navegar pelos botões
+setTimeout(()=>{if(!tour){setTxt(false);tourStart();}},1200);
+function tog(id,fn){const b=document.getElementById(id);b.addEventListener('click',()=>{const on=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',on);fn(on);});}
+tog('tWalls',on=>{wallsOn=on;groups.high.visible=on;}); tog('tFlow',on=>groups.flow.visible=on); tog('tPeople',on=>groups.people.visible=on); tog('tLabels',on=>{labelsOn=on;groups.labels.visible=on;});
+const panel=document.getElementById('panel'),hide=document.getElementById('hide');
+hide.addEventListener('click',()=>{const m=panel.classList.toggle('min');hide.textContent=m?'+':'–';hide.setAttribute('aria-label',m?'Abrir painel':'Recolher painel');});
+function size(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix();}
+addEventListener('resize',size); size(); V._g={p:PV(AREAS.geral.c),t:PV(AREAS.geral.t)}; go('_g',true);
+(function loop(now){requestAnimationFrame(loop);
+  if(anim){const k=Math.min(1,(now-anim.t0)/900),e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;cam.position.lerpVectors(anim.from.p,anim.to.p,e);ctl.target.lerpVectors(anim.from.t,anim.to.t,e);if(k>=1)anim=null;}
+  const dt=Math.min(.05,(now-(loop.l||now))/1000);loop.l=now;
+  if(!matchMedia('(prefers-reduced-motion: reduce)').matches){cartUpdate(dt);pjUpdate(dt);abUpdate(dt);workersUpdate(now/1000,dt);}
+  if(tour)tourUpdate(now);else ctl.update();renderer.render(scene,cam);})(performance.now());
+})();
+</script>
+
+
+</body>
+</html>
